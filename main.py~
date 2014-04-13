@@ -112,7 +112,7 @@ class StartScreen(object):
         self.note_caption = canvas.create_text(5, h - 18, text="Note: ", 
                 fill="purple", font="Helvetica 16", anchor="sw")
 
-        self.details_caption = canvas.create_text(w, h, text="Hold Ctrl+C to exit", 
+        self.details_caption = canvas.create_text(w, h, text="Press Ctrl+C to exit", 
                 fill="purple", font="Helvetica 16", anchor="se")
         self.details2_caption = canvas.create_text(w, h - 18, text="", 
                 fill="purple", font="Helvetica 16", anchor="se")
