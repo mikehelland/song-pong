@@ -5,6 +5,7 @@ import numpy
 import analyse
 from random import randrange
 
+
 class Main(object):
     def __init__(self, **kwargs):
 
@@ -31,11 +32,10 @@ class Main(object):
 
         # the first card is internal Intel
         # we need the rest
-        useintel = 0 ## set to 1 for true
         self.mics = []
-        for i in range(len(cards) - useintel):
+        for i in range(len(cards) - 1):
             
-            inp  = alsaaudio.PCM(alsaaudio.PCM_CAPTURE, alsaaudio.PCM_NORMAL, "hw:CARD=" + cards[useintel + i])
+            inp  = alsaaudio.PCM(alsaaudio.PCM_CAPTURE, alsaaudio.PCM_NORMAL, "hw:CARD=" + cards[1 + i])
             
             inp.setchannels(1)
             inp.setrate(44100)
@@ -44,7 +44,7 @@ class Main(object):
             
             self.mics.append(inp)
 
-    def checkLevels(self, mic):        
+    def checkLevels(self):        
         l = False
         
         try:
@@ -84,39 +84,11 @@ class StartScreen(object):
     def __init__(self, main, **kwargs):
         
         self.main = main
-        self.panels = []
-        
-        miccount = len(main.mics)
-        if miccount < 2:
-            self.panels.append(MicCheckPanel(main, main.mics[0], 0, 0, main.w, main.h))
-        else:
-            self.panels.append(MicCheckPanel(main, main.mics[0], 0, 0, main.w/2, main.h))
-            self.panels.append(MicCheckPanel(main, main.mics[1], main.w/2, 0, main.w/2, main.h))
-        
-
-        main.canvas.create_text(main.w/2, 15, text="Song Pong", fill="#0000FF", font="Helvetica 16", )        
-
-
-    def finish(self):
-        self.main.canvas.delete("all")
-
-    def run(self):
-        for i in range(len(self.panels)):
-            self.panels[i].run()
-
-
-class MicCheckPanel(object):
-    def __init__(self, main, mic, x, y, w, h, **kwargs):
-        self.mic = mic        
-        self.main = main
         canvas = main.canvas
+        w = main.w
         w2 = w/2
+        h = main.h
         h2 = h/2
-        self.w2 = w2
-        self.h2 = h2
-        self.x = x
-        self.y = y
-        
         self.maxSize = min(w, h)
         
         self.highLevel = 0
@@ -129,14 +101,23 @@ class MicCheckPanel(object):
         
         self.current_rectangle = False
         
-        self.highest_shape = canvas.create_oval(x + w2 - self.lastWidth /2, y + h2 - self.lastWidth /2, 
-            x + w2 + self.lastWidth * 0.75,  y + h2 + self.lastWidth /2, outline="#DDDD00", width=3)        
+        canvas.create_text(w2, 15, text="OpenMusicGallery.net", fill="#0000FF", font="Helvetica 16", )        
 
-        self.current_shape = canvas.create_oval(x + w2 - self.lastWidth /2,  y + h2 - self.lastWidth /2, 
-            x + w2 + self.lastWidth * 0.75,  y + h2 + self.lastWidth /2, fill="blue")        
+        self.highest_shape = canvas.create_oval(w2 - self.lastWidth /2,  h2 - self.lastWidth /2, 
+            w2 + self.lastWidth /2,  h2 + self.lastWidth /2, outline="#DDDD00", width=3)        
 
-        self.note_caption = canvas.create_text(x + w2, y + 18, text="Note: ", 
-                fill="purple", font="Helvetica 16")
+        self.current_shape = canvas.create_oval(w2 - self.lastWidth /2,  h2 - self.lastWidth /2, 
+            w2 + self.lastWidth /2,  h2 + self.lastWidth /2, fill="blue")        
+
+        self.loudness_caption = canvas.create_text(5, h, text="Volume: ", 
+                fill="purple", font="Helvetica 16", anchor="sw")
+        self.note_caption = canvas.create_text(5, h - 18, text="Note: ", 
+                fill="purple", font="Helvetica 16", anchor="sw")
+
+        self.details_caption = canvas.create_text(w, h, text="Hold Ctrl+C to exit", 
+                fill="purple", font="Helvetica 16", anchor="se")
+        self.details2_caption = canvas.create_text(w, h - 18, text="", 
+                fill="purple", font="Helvetica 16", anchor="se")
 
         self.lastSpike = 0
         self.spikes = 0
@@ -145,8 +126,6 @@ class MicCheckPanel(object):
         self.secondToLastFrame = False
 
         self.main.canvas.config(bg="black")
-        
-        self.startedTime = time.time()
 
     def run(self):
         newFrame = self.checkLevels()
@@ -157,9 +136,8 @@ class MicCheckPanel(object):
             
             wasQuiet = ((lastFrame and lastFrame.loudness < -28) or 
                         (secondToLastFrame and secondToLastFrame.loudness < -28))
-
             wasQuiet = True
-            isLoud = time.time() - self.startedTime > 3 and newFrame.loudness > -6
+            isLoud = newFrame.loudness > -18
             
             if wasQuiet and isLoud:
                 if self.lastSpike > 0 and time.time() - self.lastSpike < 0.7:
@@ -178,15 +156,19 @@ class MicCheckPanel(object):
             elif self.lastSpike > 0 and time.time() - self.lastSpike > 0.75:
                 spikes = 0
 
-            self.secondToLastFrame = lastFrame    
+            self.secontToLastFrame = lastFrame    
             self.lastFrame = newFrame
 
         self.animation()
 
+
+    def finish(self):
+        self.main.canvas.delete("all")
+
                 
     def checkLevels(self):
     
-        l,pitch,loudness = self.main.checkLevels(self.mic)    
+        l,pitch,loudness = self.main.checkLevels()    
     
         if not l:
             return None
@@ -216,18 +198,16 @@ class MicCheckPanel(object):
     
     def animation(self):
 
-        x = self.x
-        y = self.y
-        w2 = self.w2 
-        h2 = self.h2 * 1.25
+        w2 = self.main.w / 2
+        h2 = self.main.h / 2
 
         canvas = self.main.canvas        
-        canvas.coords(self.highest_shape, x + w2 - self.highLevel /2,  y + h2 - self.highLevel /2, 
-            x + w2 + self.highLevel /2,  y + h2 + self.highLevel /2)        
+        canvas.coords(self.highest_shape, w2 - self.highLevel /2,  h2 - self.highLevel /2, 
+            w2 + self.highLevel /2,  h2 + self.highLevel /2)        
         canvas.tag_raise(self.highest_shape)
 
-        canvas.coords(self.current_shape, x + w2 - self.lastWidth /2,  y + h2 - self.lastWidth /2, 
-            x + w2 + self.lastWidth /2,  y + h2 + self.lastWidth /2)        
+        canvas.coords(self.current_shape, w2 - self.lastWidth /2,  h2 - self.lastWidth /2, 
+            w2 + self.lastWidth /2,  h2 + self.lastWidth /2)        
         canvas.tag_raise(self.current_shape)
 
         #canvas.itemconfig(self.loudness_caption, text="vol " + str(self.loudness))
@@ -238,32 +218,11 @@ class MicCheckPanel(object):
             if frame.width > 1:
                 frame.width = frame.width - 1
                 width = frame.width
-                canvas.coords(frame.rectangle, x + w2 - width /2,  
-                    y + h2 - width /2, 
-                    x + w2 + width /2,  y + h2 + width /2)
+                canvas.coords(frame.rectangle, w2 - width /2,  
+                    h2 - width /2, 
+                    w2 + width /2,  h2 + width /2)
 
         self.main.window.update()
-
-class SongPongWelcome(object):
-    def __init__(self, main, **kwargs):
-        self.main = main
-    
-        if len(main.mics) == 1:
-            self.makeoneplayerscreen()
-        else:
-            self.maketwoplayerscreen()
-        
-    def makeoneplayerscreen(self):
-
-        self.title = main.canvas.create_text(main.w / 2, main.h / 8 - 10, text="Song Pong")
-        self.sing_a_note = main.canvas.create_text(main.w / 2, main.h / 8 + 10, text="Sing The Most Natural Note You Can")
-    
-    def maketwoplayerscreen(self):
-
-        self.title = main.canvas.create_text(main.w / 2, main.h / 8 - 10, text="Song Pong")
-        self.sing_a_note = main.canvas.create_text(main.w / 2, main.h / 8 + 10, text="Sing The Most Natural Note You Can")
-
-
 
 class SongPong(object):
     def __init__(self, main, **kwargs):
@@ -271,15 +230,19 @@ class SongPong(object):
 
         self.enteredGameAt = time.time()
 
-        self.dx = -8
-        self.dy = 8
-        self.y = randrange(self.main.h) - self.main.h / 2
+        self.dx = -12
+        self.dy = 12
         self.x = 0
+        self.y = 0
+        self.y = randrange(self.main.h) - self.main.h / 2
         self.w = 24
 
         self.main.canvas.config(bg="green")        
         self.ball = main.canvas.create_oval(0, 0, 0, 0, fill="white", outline="black")
         
+        self.title = main.canvas.create_text(main.w / 2, main.h / 2 - 10, text="Song Pong")
+        self.sing_a_note = main.canvas.create_text(main.w / 2, main.h / 2 + 10, text="Sing The Most Natural Note You Can")
+
         self.stage = 0        
         
         self.refLen = 10
@@ -324,11 +287,9 @@ class SongPong(object):
 
             if self.dx < 0 and self.x - self.dx < -w2:
                 self.dx = self.dx * -1
-                self.dx += 1
             if self.dx > 0 and self.x >= w2 - 35:
                 if noteP - h6 < self.y < noteP + h6:
                     self.dx =  self.dx * -1
-                    self.dx -= 1
                 else:
                     self.pointScored()
             
@@ -352,7 +313,7 @@ class SongPong(object):
 
 
     def getReferenceNote(self):
-        l,pitch,loudness = self.main.checkLevels(0)
+        l,pitch,loudness = self.main.checkLevels()
         
         if l and pitch:
             self.referenceNotes.append(pitch)
@@ -385,6 +346,3 @@ class SoundFrame(object):
 
 main = Main()
 main.run()
-
-
-
